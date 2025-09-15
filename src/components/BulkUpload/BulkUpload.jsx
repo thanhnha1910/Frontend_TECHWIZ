@@ -87,7 +87,7 @@ const BulkUpload = ({ onUploadComplete, selectedJobId }) => {
                 const formData = new FormData();
                 formData.append('resume', file);
 
-                const response = await apiService.applyForJob(selectedJobId, formData);
+                await apiService.applyForJob(selectedJobId, formData);
 
                 setUploadProgress(prev => ({
                     ...prev,

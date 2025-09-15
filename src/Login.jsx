@@ -62,13 +62,13 @@ const Login = ({ onLogin }) => {
       <div className="login-container">
         <div className="logo">
           <h1>🤖 AI Resume Ranker</h1>
-          <p>Hệ thống xếp hạng CV thông minh</p>
+          <p> CV information ranking system</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">
 
           <div className="form-group">
-            <label htmlFor="username">Tên đăng nhập:</label>
+            <label htmlFor="username">Login name:</label>
             <input
               type="text"
               id="username"
@@ -80,7 +80,7 @@ const Login = ({ onLogin }) => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">Mật khẩu:</label>
+            <label htmlFor="password">Password:</label>
             <input
               type="password"
               id="password"

@@ -82,7 +82,8 @@ const RecruiterPage = ({ user, onLogout }) => {
             const response = await apiService.createJobDescription(newJob.title, newJob.fullText);
 
             if (response.success) {
-                setJobs(prevJobs => [...prevJobs, response.job]);
+                // Reload jobs from server instead of manually adding to state
+                await loadJobs();
                 setShowForm(false);
                 setFormData({ title: '', description: '', requirements: '' });
                 setSuccessMessage('Job created successfully!');
@@ -121,48 +122,60 @@ const RecruiterPage = ({ user, onLogout }) => {
 
     const handleDownloadResume = async (resumeId, filename) => {
         try {
+            setError('');
             const result = await apiService.downloadResume(resumeId);
 
-            const url = window.URL.createObjectURL(result.blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = result.filename || filename || 'resume.pdf';
-            document.body.appendChild(link);
-            link.click();
+            if (result && result.blob) {
+                const url = window.URL.createObjectURL(result.blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = result.filename || filename || 'resume.pdf';
+                document.body.appendChild(link);
+                link.click();
 
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
 
-            alert('Resume downloaded successfully!');
+                setSuccessMessage('Resume downloaded successfully!');
+                setTimeout(() => setSuccessMessage(''), 3000);
+            } else {
+                throw new Error('Invalid response from server');
+            }
         } catch (err) {
             console.error('Download error:', err);
-            alert('Failed to download resume: ' + err.message);
+            setError('Failed to download resume: ' + err.message);
         }
     };
 
     const handleExportRankings = async (format) => {
         try {
             if (!selectedJobId) {
-                alert('Please select a job first');
+                setError('Please select a job first');
                 return;
             }
 
+            setError('');
             const result = await apiService.exportJobRankings(selectedJobId, format);
 
-            const url = window.URL.createObjectURL(result.blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = result.filename;
-            document.body.appendChild(link);
-            link.click();
+            if (result && result.blob) {
+                const url = window.URL.createObjectURL(result.blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = result.filename || `rankings.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
+                document.body.appendChild(link);
+                link.click();
 
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
 
-            alert(`${format.toUpperCase()} file downloaded successfully!`);
+                setSuccessMessage(`${format.toUpperCase()} file downloaded successfully!`);
+                setTimeout(() => setSuccessMessage(''), 3000);
+            } else {
+                throw new Error('Invalid response from server');
+            }
         } catch (err) {
             console.error('Export error:', err);
-            alert('Failed to export rankings: ' + err.message);
+            setError('Failed to export rankings: ' + err.message);
         }
     };
 
