@@ -14,6 +14,8 @@ const RecruiterPage = ({ user, onLogout }) => {
     const [rankings, setRankings] = useState([]);
     const [loadingRankings, setLoadingRankings] = useState(false);
     const [rankingsError, setRankingsError] = useState('');
+    const [displayLimit, setDisplayLimit] = useState(20); 
+    const [showAllRankings, setShowAllRankings] = useState(false); 
 
     useEffect(() => {
         loadJobs();
@@ -119,7 +121,6 @@ const RecruiterPage = ({ user, onLogout }) => {
 
     const handleDownloadResume = async (resumeId, filename) => {
         try {
-
             const result = await apiService.downloadResume(resumeId);
 
             const url = window.URL.createObjectURL(result.blob);
@@ -166,7 +167,20 @@ const RecruiterPage = ({ user, onLogout }) => {
     };
 
     const getSortedRankings = () => {
-        return [...rankings].sort((a, b) => b.overall_score - a.overall_score);
+        const sorted = [...rankings].sort((a, b) => b.overall_score - a.overall_score);
+        // Only show top 1-20 CVs unless user chooses to show all
+        return showAllRankings ? sorted : sorted.slice(0, displayLimit);
+    };
+
+    const handleToggleShowAll = () => {
+        setShowAllRankings(!showAllRankings);
+    };
+
+    const handleDisplayLimitChange = (newLimit) => {
+        setDisplayLimit(newLimit);
+        if (!showAllRankings) {
+            // If in limit mode, update immediately
+        }
     };
 
     return (
@@ -303,22 +317,43 @@ const RecruiterPage = ({ user, onLogout }) => {
                         <div className="section-header">
                             <h2>Resume Rankings</h2>
                             {rankings.length > 0 && (
-                                <div className="export-controls">
-                                    <button
-                                        className="export-btn excel"
-                                        onClick={() => handleExportRankings('excel')}
-                                        disabled={!selectedJobId || rankings.length === 0}
-                                    >
-                                        📊 Export Excel
-                                    </button>
-                                    <button
-                                        className="export-btn pdf"
-                                        onClick={() => handleExportRankings('pdf')}
-                                        disabled={!selectedJobId || rankings.length === 0}
-                                    >
-                                        📄 Export PDF
-                                    </button>
-
+                                <div className="rankings-controls">
+                                    <div className="display-controls">
+                                        <label htmlFor="displayLimit">Show top:</label>
+                                        <select 
+                                            id="displayLimit"
+                                            value={displayLimit} 
+                                            onChange={(e) => handleDisplayLimitChange(parseInt(e.target.value))}
+                                            disabled={showAllRankings}
+                                        >
+                                            <option value={5}>5 CVs</option>
+                                            <option value={10}>10 CVs</option>
+                                            <option value={15}>15 CVs</option>
+                                            <option value={20}>20 CVs</option>
+                                        </select>
+                                        <button 
+                                            className="toggle-all-btn"
+                                            onClick={handleToggleShowAll}
+                                        >
+                                            {showAllRankings ? `Show Top ${displayLimit}` : `Show All (${rankings.length})`}
+                                        </button>
+                                    </div>
+                                    <div className="export-controls">
+                                        <button
+                                            className="export-btn excel"
+                                            onClick={() => handleExportRankings('excel')}
+                                            disabled={!selectedJobId || rankings.length === 0}
+                                        >
+                                            Export Excel
+                                        </button>
+                                        <button
+                                            className="export-btn pdf"
+                                            onClick={() => handleExportRankings('pdf')}
+                                            disabled={!selectedJobId || rankings.length === 0}
+                                        >
+                                            Export PDF
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -330,67 +365,77 @@ const RecruiterPage = ({ user, onLogout }) => {
                         ) : rankings.length === 0 ? (
                             <div className="no-rankings">No resumes ranked for this job yet.</div>
                         ) : (
-                            <div className="rankings-table">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>Rank</th>
-                                            <th>Filename</th>
-                                            <th>Overall Score</th>
-                                            <th style={{display: 'none'}}>Skills Score</th>
-                                            <th style={{display: 'none'}}>Experience Score</th>
-                                            <th className="education-score-column" style={{display: 'none'}}>Education Score</th>
-                                            <th>Status</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {getSortedRankings().map((ranking, index) => (
-                                            <tr key={ranking.ranking_id || ranking.resume_id}>
-                                                <td className="rank-cell"><span className="recruiter-rank-number">{index + 1}</span></td>
-                                                <td className="filename-cell">
-                                                    <span className="recruiter-filename">{ranking.resume_filename || 'N/A'}</span>
-                                                </td>
-                                                <td className="score-cell">
-                                                    <div className="score-display">
-                                                        <span className="recruiter-score-value recruiter-overall-score">
-                                                            {(ranking.overall_score * 100)?.toFixed(1) || '0.0'}%
-                                                        </span>
-                                                        <div className="score-bar">
-                                                            <div
-                                                                className="score-fill"
-                                                                style={{ width: `${(ranking.overall_score || 0) * 100}%` }}
-                                                            ></div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="score-breakdown" style={{display: 'none'}}>
-                                                    <span className="recruiter-score-value">{(ranking.score_breakdown?.skill_match * 100)?.toFixed(1) || '0.0'}%</span>
-                                                </td>
-                                                <td className="score-breakdown" style={{display: 'none'}}>
-                                                    <span className="recruiter-score-value">{(ranking.score_breakdown?.experience_match * 100)?.toFixed(1) || '0.0'}%</span>
-                                                </td>
-                                                <td className="score-breakdown education-score-column" style={{display: 'none'}}>
-                                                    <span className="recruiter-score-value">{ranking.score_breakdown?.education_score ? (ranking.score_breakdown.education_score * 100).toFixed(1) + '%' : 'N/A'}</span>
-                                                </td>
-                                                <td>
-                                                    <span className={`recruiter-shortlist-badge ${ranking.is_shortlisted ? 'yes' : 'no'}`}>
-                                                        {ranking.is_shortlisted ? 'Shortlisted' : 'Pending'}
-                                                    </span>
-                                                </td>
-                                                <td className="actions-cell">
-                                                    <button
-                                                        className="download-btn"
-                                                        onClick={() => handleDownloadResume(ranking.resume_id, ranking.resume_filename)}
-                                                        title="Download Resume"
-                                                    >
-                                                        📥
-                                                    </button>
-                                                </td>
+                            <div className="rankings-content">
+                                <div className="rankings-info">
+                                    <span className="rankings-count">
+                                        Showing {getSortedRankings().length} of {rankings.length} resumes
+                                        {!showAllRankings && rankings.length > displayLimit && (
+                                            <span className="filtered-note"> (filtered to top {displayLimit})</span>
+                                        )}
+                                    </span>
+                                </div>
+                                <div className="rankings-table">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Rank</th>
+                                                <th>Filename</th>
+                                                <th>Overall Score</th>
+                                                <th style={{display: 'none'}}>Skills Score</th>
+                                                <th style={{display: 'none'}}>Experience Score</th>
+                                                <th className="education-score-column" style={{display: 'none'}}>Education Score</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody>
+                                            {getSortedRankings().map((ranking, index) => (
+                                                <tr key={ranking.ranking_id || ranking.resume_id}>
+                                                    <td className="rank-cell"><span className="recruiter-rank-number">{index + 1}</span></td>
+                                                    <td className="filename-cell">
+                                                        <span className="recruiter-filename">{ranking.resume_filename || 'N/A'}</span>
+                                                    </td>
+                                                    <td className="score-cell">
+                                                        <div className="score-display">
+                                                            <span className="recruiter-score-value recruiter-overall-score">
+                                                                {(ranking.overall_score * 100)?.toFixed(1) || '0.0'}%
+                                                            </span>
+                                                            <div className="score-bar">
+                                                                <div
+                                                                    className="score-fill"
+                                                                    style={{ width: `${(ranking.overall_score || 0) * 100}%` }}
+                                                                ></div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="score-breakdown" style={{display: 'none'}}>
+                                                        <span className="recruiter-score-value">{(ranking.score_breakdown?.skill_match * 100)?.toFixed(1) || '0.0'}%</span>
+                                                    </td>
+                                                    <td className="score-breakdown" style={{display: 'none'}}>
+                                                        <span className="recruiter-score-value">{(ranking.score_breakdown?.experience_match * 100)?.toFixed(1) || '0.0'}%</span>
+                                                    </td>
+                                                    <td className="score-breakdown education-score-column" style={{display: 'none'}}>
+                                                        <span className="recruiter-score-value">{ranking.score_breakdown?.education_score ? (ranking.score_breakdown.education_score * 100).toFixed(1) + '%' : 'N/A'}</span>
+                                                    </td>
+                                                    <td>
+                                                        <span className={`recruiter-shortlist-badge ${ranking.is_shortlisted ? 'yes' : 'no'}`}>
+                                                            {ranking.is_shortlisted ? 'Shortlisted' : 'Pending'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="actions-cell">
+                                                        <button
+                                                            className="download-btn"
+                                                            onClick={() => handleDownloadResume(ranking.resume_id, ranking.resume_filename)}
+                                                            title="Download Resume"
+                                                        >
+                                                            Download
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         )}
                     </section>
